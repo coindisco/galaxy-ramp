@@ -31,8 +31,6 @@ pub trait PoolContractInterface {
                                         // get_swap by id
                                         // get operator
                                         // get swap router
-
-    fn get_last_operation_id(e: Env) -> u128;
     fn get_requests(
         e: Env,
         destination: Address,

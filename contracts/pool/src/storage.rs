@@ -17,7 +17,7 @@ enum DataKey {
     SwapRouter,
     TokenIn,
     SwapRequests(Address),
-    LastOperationId,
+    OperationIdConsumed(u128),
     CompletedSwapRequests(Address, u32),
     CompletedSwapRequestLastPage(Address),
     DestinationsList(u32),
@@ -48,12 +48,6 @@ pub struct CompletedSwapRequest {
 generate_instance_storage_getter_and_setter!(operator, DataKey::Operator, Address);
 generate_instance_storage_getter_and_setter!(swap_router, DataKey::SwapRouter, Address);
 generate_instance_storage_getter_and_setter!(token_in, DataKey::TokenIn, Address);
-generate_instance_storage_getter_and_setter_with_default!(
-    last_operation_id,
-    DataKey::LastOperationId,
-    u128,
-    0
-);
 generate_instance_storage_getter_and_setter_with_default!(
     destinations_last_page,
     DataKey::DestinationsLastPage,
@@ -95,7 +89,7 @@ pub fn add_swap_request(e: &Env, destination: &Address, value: &SwapRequest) {
     }
 
     let mut requests = get_active_swap_requests(e, destination);
-    set_last_operation_id(e, &value.op_id);
+    mark_operation_id_consumed(&e, value.op_id);
     requests.push_back(value.clone());
     set_active_swap_requests(e, destination, &requests);
 }
@@ -217,4 +211,21 @@ pub fn add_destination(e: &Env, destination: &Address) {
     if destinations.len() == DESTINATIONS_PAGE_SIZE {
         set_destinations_last_page(e, &(last_page + 1));
     }
+}
+
+pub fn get_operation_id_consumed(e: &Env, op_id: u128) -> bool {
+    let key = DataKey::OperationIdConsumed(op_id);
+    match e.storage().persistent().get::<DataKey, bool>(&key) {
+        Some(_) => {
+            bump_persistent(e, &key);
+            true
+        }
+        None => false,
+    }
+}
+
+fn mark_operation_id_consumed(e: &Env, op_id: u128) {
+    let key = DataKey::OperationIdConsumed(op_id);
+    e.storage().persistent().set(&key, &true);
+    bump_persistent(e, &key);
 }
